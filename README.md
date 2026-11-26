@@ -135,6 +135,29 @@ O navegador vai avisar que o certificado não é confiável, porque ele é autoa
 - **Headers do proxy:** o proxy precisa repassar `X-Forwarded-Proto` e `X-Forwarded-Host`. A checagem anti-CSRF (`src/proxy.ts`) usa esses headers para saber o endereço público; sem eles, **todo salvamento é recusado com 403**.
 - **Cookie `Secure`:** com HTTPS, o cookie de login ganha `Secure` e o prefixo `__Secure-` automaticamente. O proxy local também envia HSTS, que obriga o navegador a usar sempre HTTPS naquele endereço.
 
+## Publicar no Railway
+
+O repositório já tem tudo pronto. O `railway.json` define o build e o start, e o comando `npm run start:producao` aplica as migrações, cria o admin inicial (se pedido) e sobe o servidor.
+
+1. **Criar o serviço:** em [railway.com](https://railway.com), clique em **New Project → Deploy from GitHub repo** e escolha este repositório.
+2. **Criar o Volume** (é o que guarda o banco): no serviço, **Settings → Volumes → Add Volume**, com mount path **`/data`**.
+3. **Variáveis** (aba **Variables**):
+
+   | Variável | Valor |
+   |---|---|
+   | `DATABASE_URL` | `file:/data/barbearia.db` |
+   | `AUTH_SECRET` | gere com `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` |
+   | `AUTH_URL` | o endereço público, ex.: `https://barbeariagrud-production.up.railway.app` |
+   | `ADMIN_INICIAL_EMAIL` | e-mail do primeiro administrador |
+   | `ADMIN_INICIAL_SENHA` | senha forte, com pelo menos 8 caracteres |
+
+4. **Gerar o domínio:** em **Settings → Networking → Generate Domain**, copie o endereço para o `AUTH_URL`. O Railway refaz o deploy sozinho a cada mudança de variável.
+5. **Primeiro acesso:** entre com o admin inicial e depois **apague `ADMIN_INICIAL_SENHA`** das variáveis. Ela só é usada quando o banco ainda não tem nenhum usuário.
+
+O HTTPS e os headers `X-Forwarded-*` já vêm do Railway. Cada `git push` na `main` gera um deploy novo, e o banco no Volume é mantido.
+
+> **Importante:** use **uma única réplica**. O SQLite fica num disco só, e o limite de tentativas de login fica na memória do servidor.
+
 ## Problema conhecido no `npm run dev`
 
 O loader do Tailwind no Turbopack às vezes **não recompila o CSS** quando você usa uma classe nova: a classe simplesmente não tem efeito. Para resolver, pare o servidor, apague a pasta `.next/dev` (é só cache) e rode `npm run dev` de novo. O `npm run build` não tem esse problema.
