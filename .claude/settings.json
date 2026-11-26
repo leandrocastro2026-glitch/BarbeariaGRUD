@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/scripts/hooks/verificar-mudancas.sh",
+            "timeout": 300,
+            "statusMessage": "Rodando testes e auditoria de segurança..."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Cliente {
+  id           Int           @id @default(autoincrement())
+  nome         String
+  telefone     String
+  email        String?       @unique
+  criadoEm     DateTime      @default(now())
+  agendamentos Agendamento[]
+}
+
+model Barbeiro {
+  id            Int           @id @default(autoincrement())
+  nome          String
+  telefone      String
+  especialidade String?
+  ativo         Boolean       @default(true)
+  criadoEm      DateTime      @default(now())
+  agendamentos  Agendamento[]
+}
+
+model Servico {
+  id            Int           @id @default(autoincrement())
+  nome          String        @unique
+  precoCentavos Int
+  duracaoMin    Int
+  criadoEm      DateTime      @default(now())
+  agendamentos  Agendamento[]
+}
+
+/// status: AGENDADO | CONCLUIDO | CANCELADO (validado com Zod; SQLite não tem enum nativo)
+model Agendamento {
+  id         Int      @id @default(autoincrement())
+  clienteId  Int
+  barbeiroId Int
+  servicoId  Int
+  inicio     DateTime
+  fim        DateTime
+  status     String   @default("AGENDADO")
+  observacao String?
+  criadoEm   DateTime @default(now())
+
+  cliente  Cliente  @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  barbeiro Barbeiro @relation(fields: [barbeiroId], references: [id], onDelete: Restrict)
+  servico  Servico  @relation(fields: [servicoId], references: [id], onDelete: Restrict)
+
+  @@index([barbeiroId, inicio])
+  @@index([inicio])
+}
+
+/// perfil: ADMIN | RECEPCAO (validado com Zod)
+model Usuario {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  email     String   @unique
+  senhaHash String
+  perfil    String   @default("RECEPCAO")
+  ativo     Boolean  @default(true)
+  /// Incrementa ao trocar senha, perfil ou desativar: invalida sessões (JWT) já emitidas.
+  versaoSessao Int   @default(0)
+  criadoEm  DateTime @default(now())
+}

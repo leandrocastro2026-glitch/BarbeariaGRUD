@@ -1,0 +1,63 @@
+{
+  "contract": "Ferramenta de recepção usada várias vezes ao dia: ver a agenda do dia por barbeiro e agendar ou mudar status em poucos cliques. Direção B 'Clássica' (papel creme, tinta, vermelho e azul do poste de barbearia, DM Serif Display + Work Sans). Ação principal: 'Novo agendamento' em vermelho. Contraste AA em todos os pares de texto. Alvos: 1440x900 e 390x844.",
+  "targetViewports": [
+    "1440x900",
+    "390x844"
+  ],
+  "accessibility": {
+    "status": "pass",
+    "evidence": "Contraste calculado (WCAG): sub/cartão 5,92; sub/papel 5,42; tinta/papel 15,05; branco/vermelho 8,67; vermelho/cartão 8,33; azul/cartão 12,17; verde/cartão 6,09. Foco visível com contorno azul de 2px (visto em form-erro-390x844.png no campo Nome). Rótulos associados por htmlFor/id; erros ligados via aria-describedby e aria-invalid; nav com aria-current. Faixa listrada marcada como aria-hidden. Paleta das séries do dashboard (#2f6db5, #c0632f) validada pelo validate_palette.js da skill dataviz: aprovada em luminosidade, croma, daltonismo, separação para visão normal e contraste sobre o cartão. A divisão novos/recorrentes tem legenda e aria-label, então não depende só da cor."
+  },
+  "responsive": {
+    "status": "pass",
+    "evidence": "1440x900: cabeçalho em uma linha, KPIs em 3 colunas, agenda em 2 colunas. 390x844: a navegação quebra em 2 linhas sem cortar texto, o formulário ocupa a largura toda e os botões ficam lado a lado. Limitação conhecida: a tabela de agendamentos rola na horizontal no celular (barra de rolagem visível em agendamentos-390x844.png)."
+  },
+  "contentStates": {
+    "loading": {
+      "status": "pass",
+      "evidence": "O fallback 'Carregando…' do Suspense está no HTML pré-renderizado de /clientes (conferido com curl); ele usa o mesmo cartão das listas, então o layout não pula."
+    },
+    "empty": {
+      "status": "pass",
+      "evidence": "Coluna do João em hoje-1440x900.png mostra 'Agenda livre' com o link '+ Agendar' disponível; listas vazias usam o componente Vazio com texto em itálico."
+    },
+    "error": {
+      "status": "pass",
+      "evidence": "form-erro-390x844.png: alerta no topo com faixa vermelha, mensagem por campo em vermelho e borda vermelha nos campos inválidos. Conflito de horário mostra a mensagem no campo Data e hora (testado na API e no navegador)."
+    },
+    "partial": {
+      "status": "not-applicable",
+      "reason": "Cada tela lê de um único banco SQLite local numa só requisição; não há fonte de dados que possa falhar separadamente e deixar uma parte da tela disponível."
+    },
+    "success": {
+      "status": "pass",
+      "evidence": "Salvar redireciona para a lista com o registro novo (testado no navegador antes do redesign; o fluxo do Formulario não mudou, só as classes). Mudança de status atualiza a cor do seletor na hora."
+    },
+    "permission": {
+      "status": "pass",
+      "evidence": "Testado no navegador com dois contextos isolados: a recepção é redirecionada de /dashboard para /sem-permissao (com link de volta para a agenda), não vê os botões de criar/editar barbeiros e serviços, não vê 'Faturado' e recebe 403 da API. Ao ser desativada pelo admin, a recepção recebe 401 na API e é mandada para /login na navegação seguinte, sem ver dados."
+    }
+  },
+  "renderedEvidence": [
+    {
+      "viewport": "1440x900",
+      "artifact": "hoje-1440x900.png",
+      "observation": "Tela Hoje: faixa listrada, título serifado, KPIs com borda azul/vermelha, aviso de atendimento atrasado, agenda do Pedro com horários serifados em azul e item cancelado esmaecido."
+    },
+    {
+      "viewport": "390x844",
+      "artifact": "agendamentos-390x844.png",
+      "observation": "Lista de agendamentos no celular: filtros empilhados, botão principal vermelho, tabela rolando na horizontal."
+    },
+    {
+      "viewport": "390x844",
+      "artifact": "form-erro-390x844.png",
+      "observation": "Formulário de cliente com erros de validação por campo e foco visível."
+    },
+    {
+      "viewport": "1440x900",
+      "artifact": "dashboard-1440x900.png",
+      "observation": "Dashboard (30 dias) com dados de teste: KPIs de receita, clientes (barra segmentada fina com legenda de pontos coloridos) e cancelamento (seta e texto 'p.p. a mais'); ranking em barras horizontais de série única com valor e receita no fim; tabela de clientes sumidos com ação Agendar."
+    }
+  ]
+}

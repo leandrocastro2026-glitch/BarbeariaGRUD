@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+/* Direção "Clássica": papel creme, tinta escura, vermelho e azul do poste de barbearia. */
+@theme {
+  --color-papel: #f6f0e4;
+  --color-cartao: #fffaf1;
+  --color-destaque: #fbf0dc;
+  --color-linha: #e3d6bf;
+  --color-tinta: #231a14;
+  --color-sub: #6e5f4f;
+  --color-verm: #8e2420;
+  --color-verm-escuro: #6f1b18;
+  --color-azul: #1f3354;
+  --color-verde: #2f6b47;
+
+  /* Séries de gráfico (validadas: luminosidade, croma, daltonismo e contraste sobre o cartão). */
+  --color-serie-1: #2f6db5;
+  --color-serie-2: #c0632f;
+}
+
+@theme inline {
+  --font-sans: var(--font-work-sans);
+  --font-serif: var(--font-dm-serif);
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-papel text-tinta;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-azul);
+  outline-offset: 2px;
+}
+
+/* Faixa do poste de barbearia no topo. */
+.poste {
+  height: 8px;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--color-verm) 0 12px,
+    #fff 12px 24px,
+    var(--color-azul) 24px 36px,
+    #fff 36px 48px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
