@@ -138,6 +138,31 @@ export const usuarioAtualizarSchema = z.object({
   senha: z.preprocess(vazioParaNull, senhaNova.nullable().default(null)),
 });
 
+/** Cadastro feito pela própria pessoa na tela de login (perfil e situação são decididos no servidor). */
+export const cadastroSchema = z
+  .object({
+    nome: camposUsuario.nome,
+    email: camposUsuario.email,
+    senha: senhaNova,
+    confirmacao: z.string(),
+  })
+  .refine((d) => d.senha === d.confirmacao, { error: "As senhas não conferem.", path: ["confirmacao"] });
+
+// ---------- Área do cliente ----------
+
+export const completarCadastroSchema = z.object({ nome: texto("Nome"), telefone });
+
+/** Escolha na tela "Agendar". `inicio` (ISO) só é exigido na hora de confirmar o horário. */
+export const escolhaHorarioSchema = z.object({
+  servicoId: id("um serviço"),
+  barbeiroId: id("um barbeiro"),
+  data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { error: "Escolha uma data." }),
+  inicio: z.preprocess(
+    vazioParaNull,
+    z.iso.datetime({ offset: true, error: "Horário inválido." }).nullable().default(null),
+  ),
+});
+
 export const loginSchema = z.object({
   email: z.string().trim().toLowerCase().min(1).max(200),
   senha: z.string().min(1).max(200),

@@ -1,6 +1,5 @@
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+// Usa o client do app para que nomes, telefones e e-mails já sejam gravados cifrados.
+import { prisma } from "../src/lib/prisma";
 
 /** Horário de hoje em Brasília, ex.: hoje("14:30"). */
 function hoje(hm: string, diasAFrente = 0) {

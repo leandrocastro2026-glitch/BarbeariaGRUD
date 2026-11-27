@@ -14,6 +14,11 @@ export function FormLogin({ de }: { de: string }) {
           {estado.erro}
         </p>
       )}
+      {estado.aviso && (
+        <p role="status" className="border-l-4 border-azul bg-destaque px-4 py-3 text-sm">
+          {estado.aviso}
+        </p>
+      )}
       <div className="space-y-1.5">
         <label htmlFor="email" className={estiloRotulo}>
           E-mail ou usuário

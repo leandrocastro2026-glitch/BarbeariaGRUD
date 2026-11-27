@@ -28,6 +28,19 @@ describe("permissoes", () => {
     }
   });
 
+  it("cliente só acessa a própria área (portal)", () => {
+    for (const r of ["agendamentos", "clientes", "barbeiros", "servicos", "usuarios", "dashboard", "faturamento"] as const) {
+      expect(pode("CLIENTE", r, "ler")).toBe(false);
+      expect(pode("CLIENTE", r, "escrever")).toBe(false);
+    }
+    expect(pode("CLIENTE", "portal", "escrever")).toBe(true);
+  });
+
+  it("equipe não usa a área do cliente", () => {
+    expect(pode("ADMIN", "portal", "ler")).toBe(false);
+    expect(pode("RECEPCAO", "portal", "ler")).toBe(false);
+  });
+
   it("perfil desconhecido não pode nada", () => {
     expect(pode("HACKER" as never, "clientes", "ler")).toBe(false);
   });

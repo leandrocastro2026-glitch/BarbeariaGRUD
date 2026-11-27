@@ -61,7 +61,9 @@ export function normalizarErro(erro: unknown): AppError {
     if (erro.code === "P2025") return new NotFoundError();
     if (erro.code === "P2002") {
       const alvo = erro.meta?.target;
-      const campo = Array.isArray(alvo) ? String(alvo[0]) : typeof alvo === "string" ? alvo : "_";
+      const bruto = Array.isArray(alvo) ? String(alvo[0]) : typeof alvo === "string" ? alvo : "_";
+      // O e-mail é único pelo índice cifrado (emailHash), mas para quem usa o campo é "email".
+      const campo = bruto.replace(/Hash$/, "");
       return new ConflictError("Já existe um registro com esse valor.", {
         [campo]: ["Já está em uso."],
       });

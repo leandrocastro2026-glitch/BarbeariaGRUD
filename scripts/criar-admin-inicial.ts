@@ -4,6 +4,7 @@
  * primeiro administrador. Em qualquer outro caso não faz nada — nunca altera usuários existentes.
  * Depois do primeiro login, apague essas variáveis no painel da hospedagem.
  */
+import { mascararEmail } from "../src/lib/cripto";
 import { prisma } from "../src/lib/prisma";
 import { AppError } from "../src/lib/erros";
 import * as usuarios from "../src/lib/services/usuarios";
@@ -22,7 +23,7 @@ async function main() {
     return;
   }
   const u = await usuarios.criar({ nome: process.env.ADMIN_INICIAL_NOME?.trim() || "Administrador", email, senha, perfil: "ADMIN" });
-  console.log(`[admin-inicial] administrador criado: ${u.email}. Apague ADMIN_INICIAL_SENHA do painel.`);
+  console.log(`[admin-inicial] administrador criado: ${mascararEmail(u.email)}. Apague ADMIN_INICIAL_SENHA do painel.`);
 }
 
 main()

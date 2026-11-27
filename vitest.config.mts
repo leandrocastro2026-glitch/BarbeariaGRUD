@@ -6,7 +6,8 @@ export default defineConfig({
   test: {
     environment: "node",
     globalSetup: ["./tests/global-setup.ts"],
-    env: { DATABASE_URL: "file:./test.db" },
+    // Chave fixa só para os testes (nunca use em produção).
+    env: { DATABASE_URL: "file:./test.db", DADOS_CHAVE: "dGVzdGUtdGVzdGUtdGVzdGUtdGVzdGUtdGVzdGUtMTI=" },
     fileParallelism: false,
   },
 });

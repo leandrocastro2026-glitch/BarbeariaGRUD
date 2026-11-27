@@ -119,6 +119,28 @@ export const CATALOGO = {
   },
 
   // ---------- Recepção ----------
+  "cliente-api": {
+    categoria: "acesso",
+    severidade: "CRÍTICA",
+    titulo: "Cliente da agenda online consegue usar a gestão",
+    testado:
+      "Logado como cliente (conta criada pelo site), tentou listar clientes, ver/criar/excluir agendamentos de outros, mexer em usuários, barbeiros e serviços pela API.",
+    impacto:
+      "Qualquer pessoa que se cadastrasse no site veria telefones e horários de todos os clientes, poderia cancelar a agenda dos outros ou até virar administradora.",
+    correcao:
+      "O perfil CLIENTE em src/lib/permissoes.ts deve ter [] em todos os recursos, exceto 'portal'. Toda rota da API precisa chamar exigirUsuario(recurso) com o recurso certo.",
+  },
+  "dados-cifrados": {
+    categoria: "vazamento",
+    severidade: "ALTA",
+    titulo: "Dados pessoais gravados em texto puro no banco",
+    testado:
+      "Leu o banco direto, sem passar pelo app (como faria quem copiasse o arquivo .db ou um backup), e conferiu nome, telefone e e-mail.",
+    impacto:
+      "Um backup vazado, um acesso indevido ao volume do servidor ou um erro de configuração entregaria nomes, telefones e e-mails de todos os clientes e da equipe.",
+    correcao:
+      "Defina DADOS_CHAVE e confira CAMPOS_CIFRADOS em src/lib/prisma.ts. Para cifrar dados antigos, rode npm run dados:cifrar.",
+  },
   "recepcao-api": {
     categoria: "acesso",
     severidade: "CRÍTICA",

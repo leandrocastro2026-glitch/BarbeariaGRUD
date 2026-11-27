@@ -7,8 +7,11 @@ import { executar, existeOuFalha, idValido, validar } from "./_base";
 /** Nunca selecionar senhaHash para fora deste módulo. */
 const publico = { id: true, nome: true, email: true, perfil: true, ativo: true, criadoEm: true } as const;
 
-export const listar = () =>
-  prisma.usuario.findMany({ select: publico, orderBy: [{ ativo: "desc" }, { nome: "asc" }] });
+// O nome é cifrado no banco: a ordenação alfabética é feita depois de decifrar.
+export const listar = async () =>
+  (await prisma.usuario.findMany({ select: publico })).sort(
+    (a, b) => Number(b.ativo) - Number(a.ativo) || a.nome.localeCompare(b.nome, "pt-BR"),
+  );
 
 export const buscar = (id: unknown) =>
   existeOuFalha(prisma.usuario.findUnique({ where: { id: idValido(id) }, select: publico }), "Usuário não encontrado.");
@@ -17,7 +20,8 @@ export const criar = (entrada: unknown) =>
   executar(async () => {
     const { senha, ...dados } = validar(usuarioCriarSchema, entrada);
     return prisma.usuario.create({
-      data: { ...dados, senhaHash: await gerarHashSenha(senha) },
+      // Conta criada por um administrador: o e-mail é considerado verificado.
+      data: { ...dados, senhaHash: await gerarHashSenha(senha), emailVerificadoEm: new Date() },
       select: publico,
     });
   });

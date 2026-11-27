@@ -16,7 +16,7 @@ describe("usuarios", () => {
     const lista = await usuarios.listar();
     expect(lista[0]).not.toHaveProperty("senhaHash");
     const bruto = await prisma.usuario.findUniqueOrThrow({ where: { id: admin.id } });
-    expect(await verificarSenha("senhaforte1", bruto.senhaHash)).toBe(true);
+    expect(await verificarSenha("senhaforte1", bruto.senhaHash!)).toBe(true);
   });
 
   it("exige senha com pelo menos 8 caracteres ao criar", async () => {
@@ -35,7 +35,7 @@ describe("usuarios", () => {
     await usuarios.atualizar(admin.id, { nome: "Dono 2", email: "dono@x.com", perfil: "ADMIN", ativo: true, senha: "" }, admin.id);
     const bruto = await prisma.usuario.findUniqueOrThrow({ where: { id: admin.id } });
     expect(bruto.nome).toBe("Dono 2");
-    expect(await verificarSenha("senhaforte1", bruto.senhaHash)).toBe(true);
+    expect(await verificarSenha("senhaforte1", bruto.senhaHash!)).toBe(true);
   });
 
   it("trocar senha ou perfil invalida sessões; editar só o nome não", async () => {

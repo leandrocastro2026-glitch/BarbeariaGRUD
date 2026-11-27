@@ -11,6 +11,9 @@ const LINKS: (ItemNav & { recurso: Recurso })[] = [
   { href: "/servicos", rotulo: "Serviços", recurso: "servicos" },
   { href: "/dashboard", rotulo: "Dashboard", recurso: "dashboard" },
   { href: "/usuarios", rotulo: "Usuários", recurso: "usuarios" },
+  // Área do cliente
+  { href: "/agendar", rotulo: "Agendar", recurso: "portal" },
+  { href: "/meus-agendamentos", rotulo: "Meus horários", recurso: "portal" },
 ];
 
 /** Menu e usuário logado. Na tela de login (sem sessão) não renderiza nada. */

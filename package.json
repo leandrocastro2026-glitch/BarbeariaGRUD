@@ -12,10 +12,11 @@
     "db:seed": "prisma db seed",
     "db:migrate": "prisma migrate dev",
     "usuario:criar": "tsx scripts/criar-usuario.ts",
+    "dados:cifrar": "tsx scripts/cifrar-dados.ts",
     "test:seguranca": "tsx scripts/seguranca/pentest.ts",
     "start:https": "node scripts/https/proxy-https.mjs",
     "postinstall": "prisma generate",
-    "start:producao": "prisma migrate deploy && tsx scripts/criar-admin-inicial.ts && next start"
+    "start:producao": "prisma migrate deploy && tsx scripts/cifrar-dados.ts && tsx scripts/criar-admin-inicial.ts && next start"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

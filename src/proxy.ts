@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/auth";
 
-const PUBLICAS = ["/login", "/api/auth"];
+const PUBLICAS = ["/login", "/cadastro", "/verificar-email", "/api/auth"];
 
 const METODOS_SEGUROS = new Set(["GET", "HEAD", "OPTIONS"]);
 
@@ -35,6 +35,17 @@ function origemValida(req: NextRequest) {
  * via `exigirPagina` / `exigirUsuario`.
  */
 export const proxy = auth((req) => {
+  const res = decidir(req) ?? NextResponse.next();
+  // HSTS: depois da primeira visita por HTTPS, o navegador nunca mais abre o site sem criptografia.
+  // Fora de localhost, para não "travar" o ambiente de desenvolvimento em HTTPS.
+  const publico = new URL(origemPublica(req));
+  if (publico.protocol === "https:" && !["localhost", "127.0.0.1"].includes(publico.hostname)) {
+    res.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
+  return res;
+});
+
+function decidir(req: Parameters<Parameters<typeof auth>[0]>[0]) {
   const { pathname, search } = req.nextUrl;
   if (
     pathname.startsWith("/api/") &&
@@ -53,7 +64,7 @@ export const proxy = auth((req) => {
   const login = new URL("/login", req.nextUrl);
   if (pathname !== "/") login.searchParams.set("de", pathname + search);
   return NextResponse.redirect(login);
-});
+}
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|svg|ico|webp)$).*)"],

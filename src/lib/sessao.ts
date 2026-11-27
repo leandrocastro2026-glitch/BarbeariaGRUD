@@ -36,6 +36,33 @@ export async function exigirUsuario(recurso?: Recurso, acao: Acao = "ler"): Prom
 export async function exigirPagina(recurso?: Recurso, acao: Acao = "ler"): Promise<UsuarioSessao> {
   const u = await usuarioAtual();
   if (!u) redirect("/login");
-  if (recurso && !pode(u.perfil, recurso, acao)) redirect("/sem-permissao");
+  if (recurso && !pode(u.perfil, recurso, acao)) {
+    // Cliente que cai numa tela da equipe (inclusive a inicial "/") vai para a área dele.
+    redirect(u.perfil === "CLIENTE" ? "/meus-agendamentos" : "/sem-permissao");
+  }
   return u;
+}
+
+export type ClienteSessao = UsuarioSessao & { clienteId: number };
+
+/** id do cadastro de cliente ligado à conta (null enquanto falta completar o cadastro). */
+async function clienteDaConta(usuarioId: number) {
+  const r = await prisma.usuario.findUnique({ where: { id: usuarioId }, select: { clienteId: true } });
+  return r?.clienteId ?? null;
+}
+
+/** Para páginas da área do cliente: exige perfil CLIENTE com cadastro completo (telefone). */
+export async function exigirPaginaCliente(): Promise<ClienteSessao> {
+  const u = await exigirPagina("portal");
+  const clienteId = await clienteDaConta(u.id);
+  if (!clienteId) redirect("/completar-cadastro");
+  return { ...u, clienteId };
+}
+
+/** Para Server Actions da área do cliente: lança 401/403 em vez de redirecionar. */
+export async function exigirCliente(): Promise<ClienteSessao> {
+  const u = await exigirUsuario("portal", "escrever");
+  const clienteId = await clienteDaConta(u.id);
+  if (!clienteId) throw new ForbiddenError("Complete seu cadastro antes de agendar.");
+  return { ...u, clienteId };
 }

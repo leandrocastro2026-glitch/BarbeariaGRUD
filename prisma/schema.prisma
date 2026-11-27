@@ -7,18 +7,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// nome, telefone e email ficam CIFRADOS (AES-256-GCM, ver src/lib/cripto.ts).
 model Cliente {
   id           Int           @id @default(autoincrement())
   nome         String
   telefone     String
-  email        String?       @unique
+  email        String?
+  /// HMAC do e-mail: permite busca exata e garante e-mail único sem guardar o e-mail em claro.
+  emailHash    String?       @unique
   criadoEm     DateTime      @default(now())
   agendamentos Agendamento[]
+  /// Conta de login do próprio cliente (perfil CLIENTE), se ele se cadastrou pelo site.
+  usuario      Usuario?
 }
 
 model Barbeiro {
   id            Int           @id @default(autoincrement())
   nome          String
+  /// CIFRADO
   telefone      String
   especialidade String?
   ativo         Boolean       @default(true)
@@ -44,6 +50,7 @@ model Agendamento {
   inicio     DateTime
   fim        DateTime
   status     String   @default("AGENDADO")
+  /// CIFRADO
   observacao String?
   criadoEm   DateTime @default(now())
 
@@ -55,15 +62,40 @@ model Agendamento {
   @@index([inicio])
 }
 
-/// perfil: ADMIN | RECEPCAO (validado com Zod)
+/// perfil: ADMIN | RECEPCAO | CLIENTE (validado com Zod)
+/// nome e email ficam CIFRADOS; a busca no login usa emailHash.
 model Usuario {
   id        Int      @id @default(autoincrement())
   nome      String
-  email     String   @unique
-  senhaHash String
+  email     String
+  emailHash String?  @unique
+  /// Nulo em contas criadas só pelo Google (não têm senha local).
+  senhaHash String?
   perfil    String   @default("RECEPCAO")
   ativo     Boolean  @default(true)
   /// Incrementa ao trocar senha, perfil ou desativar: invalida sessões (JWT) já emitidas.
   versaoSessao Int   @default(0)
+  /// Nulo enquanto o dono não confirmou o e-mail pelo link enviado no cadastro.
+  emailVerificadoEm DateTime?
+  /// "sub" da conta Google vinculada.
+  googleId  String?  @unique
+  /// Só para perfil CLIENTE: o cadastro de cliente que esta conta representa.
+  clienteId Int?     @unique
   criadoEm  DateTime @default(now())
+
+  cliente           Cliente?           @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  tokensVerificacao TokenVerificacao[]
+}
+
+/// Link de confirmação de e-mail. Guardamos só o SHA-256 do token; o token em si vai apenas no e-mail.
+model TokenVerificacao {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int
+  hashToken String   @unique
+  expiraEm  DateTime
+  criadoEm  DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
 }

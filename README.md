@@ -147,16 +147,67 @@ O repositório já tem tudo pronto. O `railway.json` define o build e o start, e
    |---|---|
    | `DATABASE_URL` | `file:/data/barbearia.db` |
    | `AUTH_SECRET` | gere com `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` |
+   | `DADOS_CHAVE` | **obrigatória.** Cifra nomes, telefones e e-mails no banco. Gere com `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` e **guarde uma cópia fora do Railway**: sem ela os dados não podem ser lidos |
    | `AUTH_URL` | o endereço público, ex.: `https://barbeariagrud-production.up.railway.app` |
-   | `ADMIN_INICIAL_EMAIL` | e-mail do primeiro administrador |
-   | `ADMIN_INICIAL_SENHA` | senha forte, com pelo menos 8 caracteres |
+   | `ADMIN_INICIAL_EMAIL` | *(opcional)* e-mail do primeiro administrador |
+   | `ADMIN_INICIAL_SENHA` | *(opcional)* senha forte, com pelo menos 8 caracteres |
+   | `RESEND_API_KEY` **ou** `BREVO_API_KEY` | chave do provedor que envia o e-mail de confirmação |
+   | `EMAIL_REMETENTE` | remetente, ex.: `Barbearia <nao-responda@seudominio.com>` |
+   | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | *(opcional)* liga o botão "Continuar com Google" |
 
 4. **Gerar o domínio:** em **Settings → Networking → Generate Domain**, copie o endereço para o `AUTH_URL`. O Railway refaz o deploy sozinho a cada mudança de variável.
-5. **Primeiro acesso:** entre com o admin inicial e depois **apague `ADMIN_INICIAL_SENHA`** das variáveis. Ela só é usada quando o banco ainda não tem nenhum usuário.
+5. **Primeiro acesso:** com o banco vazio, clique em **Criar conta** na tela de login (ou entre com Google): a primeira conta vira administradora. Faça isso logo depois do deploy, antes de divulgar o link. Se preferir o admin inicial por variável, entre com ele e depois **apague `ADMIN_INICIAL_SENHA`**.
+
+## Cadastro, confirmação de e-mail e Google
+
+- **Criar conta** (`/cadastro`): nome, e-mail e senha. O servidor manda um link de confirmação (vale 24 h, uso único, só o hash fica no banco). Sem confirmar, o login mostra "Falta confirmar seu e-mail" e reenvia o link (no máximo 1 por minuto).
+- **Quem ganha acesso:** a **primeira** conta do sistema vira **administrador**. As seguintes são de **clientes**: entram assim que confirmam o e-mail, mas só veem a área do cliente. Contas da equipe (Recepção/Admin) continuam sendo criadas por um admin em **Usuários → Novo**.
+- **E-mail:** o Railway bloqueia SMTP no plano Hobby, então o envio é por API HTTPS. Com **Resend**, só dá para enviar a qualquer pessoa depois de verificar um domínio seu; sem domínio, ele só envia para o e-mail da própria conta Resend. O **Brevo** permite verificar só um endereço remetente. Sem chave configurada, o link aparece no log do servidor (`[email] nenhum provedor configurado`).
+- **Google:** em [Google Cloud Console → Credenciais](https://console.cloud.google.com/apis/credentials), crie um *ID do cliente OAuth* do tipo **Aplicativo da Web** com o URI de redirecionamento `https://SEU-DOMINIO/api/auth/callback/google`. Coloque o ID e a chave secreta em `AUTH_GOOGLE_ID` e `AUTH_GOOGLE_SECRET`. Se o e-mail do Google já tiver conta, ela é vinculada; se a conta existia mas nunca foi confirmada, a senha antiga é descartada, porque quem provou ser dono do e-mail foi o Google.
 
 O HTTPS e os headers `X-Forwarded-*` já vêm do Railway. Cada `git push` na `main` gera um deploy novo, e o banco no Volume é mantido.
 
 > **Importante:** use **uma única réplica**. O SQLite fica num disco só, e o limite de tentativas de login fica na memória do servidor.
+
+## Criptografia dos dados pessoais
+
+Quem copiar o arquivo do banco (um backup vazado, acesso indevido ao volume) não lê os dados pessoais: eles são gravados cifrados com **AES-256-GCM**.
+
+| Onde | Campos cifrados |
+|---|---|
+| Clientes | nome, telefone, e-mail |
+| Usuários | nome, e-mail |
+| Barbeiros | telefone |
+| Agendamentos | observação |
+
+- **Já protegidos de outro jeito:** senhas (hash scrypt), links de confirmação (só o SHA-256 fica no banco) e sessão (cookie JWE cifrado pelo Auth.js, `HttpOnly` e `Secure`).
+- **Em trânsito:** HTTPS do Railway e HSTS, que faz o navegador nunca mais abrir o site sem criptografia.
+- **Logs:** e-mails aparecem mascarados (`an***@exemplo.com`).
+- **Ficam em texto puro** (não são dados pessoais e aparecem para os clientes): nome dos barbeiros, serviços, preços, horários e status.
+- **Como funciona:** `src/lib/prisma.ts` cifra ao gravar e decifra ao ler, então o resto do código usa texto normal. O login acha a conta por um índice HMAC do e-mail (`emailHash`), sem guardar o e-mail em texto puro. Como o banco não consegue filtrar nem ordenar por campo cifrado, as listas são ordenadas depois de decifrar.
+- **Bancos antigos:** a cada start, `scripts/cifrar-dados.ts` cifra o que ainda estiver em texto puro e roda `VACUUM`, para não sobrar resto no arquivo. Ele **barra o deploy** se a `DADOS_CHAVE` estiver faltando ou não abrir os dados já cifrados. Nesse caso, o Railway mantém a versão anterior no ar.
+- **Nunca troque a `DADOS_CHAVE`** depois de usar: os dados cifrados com a chave antiga deixam de abrir.
+
+## Área do cliente (agenda online)
+
+Quem se cadastra pelo site tem o perfil **Cliente** e vê só três telas:
+
+- **Completar cadastro** (`/completar-cadastro`): pede o telefone no primeiro acesso. Se a barbearia já tinha um cliente com o mesmo e-mail, a conta é ligada a ele, e o histórico aparece.
+- **Agendar** (`/agendar`): escolhe serviço, barbeiro e dia, e aparecem só os horários livres. Um toque marca o horário.
+- **Meus horários** (`/meus-agendamentos`): próximos horários (com **Cancelar horário**) e histórico.
+
+Regras, todas em `src/lib/horario-funcionamento.ts`:
+
+| Regra | Padrão |
+|---|---|
+| Dias de atendimento | segunda a sábado |
+| Horário | 09:00 às 19:00 (o serviço precisa terminar até o fechamento) |
+| Intervalo entre horários | 30 minutos |
+| Antecedência mínima | 30 minutos |
+| Até quantos dias à frente | 30 |
+| Horários futuros por cliente | no máximo 3 |
+
+Segurança: o cliente não acessa nenhuma tela nem API da equipe (recebe 403, ou é levado para "Meus horários"). Ele só marca e cancela em nome de si mesmo, porque o id do cliente vem da sessão e nunca do formulário. A mensagem de horário ocupado também não revela quem ocupa o horário. A equipe vê os agendamentos feitos pelo site na agenda normal.
 
 ## Problema conhecido no `npm run dev`
 

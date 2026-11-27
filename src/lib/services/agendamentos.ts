@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { prisma } from "../prisma";
+import { prisma, type TransacaoPrisma } from "../prisma";
 import { ConflictError, ValidationError } from "../erros";
 import { formatarHora, intervaloDoDia } from "../datas";
 import {
@@ -10,7 +10,7 @@ import {
 } from "../validacao";
 import { executar, existeOuFalha, idValido, validar } from "./_base";
 
-type Tx = Prisma.TransactionClient;
+type Tx = TransacaoPrisma;
 
 const incluirRelacoes = {
   // Só o necessário para a agenda: a recepção não tem acesso aos dados de contato dos clientes.

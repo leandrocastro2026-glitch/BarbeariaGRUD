@@ -3,11 +3,11 @@ import { ConflictError } from "../erros";
 import { clienteSchema } from "../validacao";
 import { executar, existeOuFalha, idValido, validar } from "./_base";
 
-export const listar = () =>
-  prisma.cliente.findMany({
-    orderBy: { nome: "asc" },
-    include: { _count: { select: { agendamentos: true } } },
-  });
+// O nome é cifrado no banco: a ordenação alfabética é feita depois de decifrar.
+export const listar = async () =>
+  (
+    await prisma.cliente.findMany({ include: { _count: { select: { agendamentos: true } } } })
+  ).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 
 export const buscar = (id: unknown) =>
   existeOuFalha(prisma.cliente.findUnique({ where: { id: idValido(id) } }), "Cliente não encontrado.");

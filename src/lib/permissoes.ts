@@ -1,7 +1,7 @@
-export const PERFIS = ["ADMIN", "RECEPCAO"] as const;
+export const PERFIS = ["ADMIN", "RECEPCAO", "CLIENTE"] as const;
 export type Perfil = (typeof PERFIS)[number];
 
-export const PERFIL_ROTULO: Record<Perfil, string> = { ADMIN: "Administrador", RECEPCAO: "Recepção" };
+export const PERFIL_ROTULO: Record<Perfil, string> = { ADMIN: "Administrador", RECEPCAO: "Recepção", CLIENTE: "Cliente" };
 
 export type Recurso =
   | "agendamentos"
@@ -10,7 +10,9 @@ export type Recurso =
   | "servicos"
   | "usuarios"
   | "dashboard"
-  | "faturamento";
+  | "faturamento"
+  /** Área do cliente: marcar e ver os próprios horários. */
+  | "portal";
 export type Acao = "ler" | "escrever";
 
 const TUDO: Acao[] = ["ler", "escrever"];
@@ -25,6 +27,7 @@ const MATRIZ: Record<Perfil, Record<Recurso, Acao[]>> = {
     usuarios: TUDO,
     dashboard: TUDO,
     faturamento: TUDO,
+    portal: [],
   },
   RECEPCAO: {
     agendamentos: TUDO,
@@ -35,6 +38,18 @@ const MATRIZ: Record<Perfil, Record<Recurso, Acao[]>> = {
     usuarios: [],
     dashboard: [],
     faturamento: [],
+    portal: [],
+  },
+  // Cliente que se cadastrou pelo site: nada da gestão, só a própria área.
+  CLIENTE: {
+    agendamentos: [],
+    clientes: [],
+    barbeiros: [],
+    servicos: [],
+    usuarios: [],
+    dashboard: [],
+    faturamento: [],
+    portal: TUDO,
   },
 };
 
