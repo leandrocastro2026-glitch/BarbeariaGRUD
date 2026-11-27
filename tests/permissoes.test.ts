@@ -36,6 +36,12 @@ describe("permissoes", () => {
     expect(pode("CLIENTE", "portal", "escrever")).toBe(true);
   });
 
+  it("só o admin mexe no horário de funcionamento", () => {
+    expect(pode("ADMIN", "horarios", "escrever")).toBe(true);
+    expect(pode("RECEPCAO", "horarios", "ler")).toBe(false);
+    expect(pode("CLIENTE", "horarios", "ler")).toBe(false);
+  });
+
   it("equipe não usa a área do cliente", () => {
     expect(pode("ADMIN", "portal", "ler")).toBe(false);
     expect(pode("RECEPCAO", "portal", "ler")).toBe(false);

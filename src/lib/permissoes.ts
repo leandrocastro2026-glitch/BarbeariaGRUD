@@ -11,6 +11,8 @@ export type Recurso =
   | "usuarios"
   | "dashboard"
   | "faturamento"
+  /** Horário de funcionamento da agenda online. */
+  | "horarios"
   /** Área do cliente: marcar e ver os próprios horários. */
   | "portal";
 export type Acao = "ler" | "escrever";
@@ -27,6 +29,7 @@ const MATRIZ: Record<Perfil, Record<Recurso, Acao[]>> = {
     usuarios: TUDO,
     dashboard: TUDO,
     faturamento: TUDO,
+    horarios: TUDO,
     portal: [],
   },
   RECEPCAO: {
@@ -38,6 +41,7 @@ const MATRIZ: Record<Perfil, Record<Recurso, Acao[]>> = {
     usuarios: [],
     dashboard: [],
     faturamento: [],
+    horarios: [],
     portal: [],
   },
   // Cliente que se cadastrou pelo site: nada da gestão, só a própria área.
@@ -49,6 +53,7 @@ const MATRIZ: Record<Perfil, Record<Recurso, Acao[]>> = {
     usuarios: [],
     dashboard: [],
     faturamento: [],
+    horarios: [],
     portal: TUDO,
   },
 };

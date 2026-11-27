@@ -24,9 +24,15 @@ describe("cifra AES-256-GCM", () => {
   });
 
   it("detecta adulteração do texto cifrado", () => {
+    // Altera um BYTE de verdade. (Trocar o último caractere do base64 nem sempre muda os bytes:
+    // os bits finais podem ser só preenchimento — isso deixava o teste falhando às vezes.)
     const c = cifrar("Ana Souza");
-    const ultimo = c.at(-1) === "A" ? "B" : "A";
-    expect(() => decifrar(c.slice(0, -1) + ultimo)).toThrow();
+    const bytes = Buffer.from(c.slice("enc:v1:".length), "base64url");
+    for (const posicao of [0, 12, bytes.length - 1]) {
+      const adulterado = Buffer.from(bytes);
+      adulterado[posicao] ^= 0x01;
+      expect(() => decifrar("enc:v1:" + adulterado.toString("base64url"))).toThrow();
+    }
   });
 
   it("não cifra duas vezes", () => {
@@ -118,7 +124,7 @@ describe("dados no banco", () => {
     // Rodar de novo não estraga nada.
     execSync("npx tsx scripts/cifrar-dados.ts", { env: process.env, stdio: "ignore" });
     expect((await prisma.cliente.findUniqueOrThrow({ where: { id: antigo.id } })).email).toBe("antigo@x.com");
-  });
+  }, 60_000); // roda o script de verdade duas vezes: pode passar dos 5 s padrão com a máquina ocupada
 
   it("o script barra o deploy se a chave for trocada (os dados não abririam)", async () => {
     await clientes.criar({ nome: "Cifrado", telefone: "11900000000" });
@@ -126,5 +132,5 @@ describe("dados no banco", () => {
     expect(() =>
       execSync("npx tsx scripts/cifrar-dados.ts", { env: { ...process.env, DADOS_CHAVE: outraChave }, stdio: "pipe" }),
     ).toThrow(/não abre os dados/);
-  });
+  }, 60_000);
 });

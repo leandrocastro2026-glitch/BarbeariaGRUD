@@ -99,3 +99,22 @@ model TokenVerificacao {
 
   @@index([usuarioId])
 }
+
+/// Horário de funcionamento da agenda online, um registro por dia da semana (0 = domingo ... 6 = sábado).
+/// Sem registros, vale o padrão de src/lib/horario-funcionamento.ts.
+model HorarioDia {
+  diaSemana Int     @id
+  aberto    Boolean @default(true)
+  /// "HH:MM" no horário de Brasília
+  abre      String  @default("09:00")
+  fecha     String  @default("19:00")
+}
+
+/// Regras gerais da agenda online (registro único, id = 1).
+model ConfigAgenda {
+  id                     Int @id @default(1)
+  intervaloMin           Int @default(30)
+  antecedenciaMin        Int @default(30)
+  diasAFrente            Int @default(30)
+  maxAgendamentosFuturos Int @default(3)
+}

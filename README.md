@@ -197,7 +197,9 @@ Quem se cadastra pelo site tem o perfil **Cliente** e vê só três telas:
 - **Agendar** (`/agendar`): escolhe serviço, barbeiro e dia, e aparecem só os horários livres. Um toque marca o horário.
 - **Meus horários** (`/meus-agendamentos`): próximos horários (com **Cancelar horário**) e histórico.
 
-Regras, todas em `src/lib/horario-funcionamento.ts`:
+**O admin define quando os clientes podem marcar** na tela **Horários** (`/horarios`): quais dias abrem, o horário de abrir e fechar de cada dia, o intervalo entre horários, a antecedência mínima, até quantos dias à frente e o máximo de horários por cliente. Mudanças valem na hora e não alteram horários já marcados. A equipe continua podendo agendar em qualquer horário pela tela Agendamentos.
+
+Enquanto nada for salvo, vale o padrão (`src/lib/horario-funcionamento.ts`):
 
 | Regra | Padrão |
 |---|---|

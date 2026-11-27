@@ -1,0 +1,17 @@
+-- CreateTable
+CREATE TABLE "HorarioDia" (
+    "diaSemana" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "aberto" BOOLEAN NOT NULL DEFAULT true,
+    "abre" TEXT NOT NULL DEFAULT '09:00',
+    "fecha" TEXT NOT NULL DEFAULT '19:00'
+);
+
+-- CreateTable
+CREATE TABLE "ConfigAgenda" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT DEFAULT 1,
+    "intervaloMin" INTEGER NOT NULL DEFAULT 30,
+    "antecedenciaMin" INTEGER NOT NULL DEFAULT 30,
+    "diasAFrente" INTEGER NOT NULL DEFAULT 30,
+    "maxAgendamentosFuturos" INTEGER NOT NULL DEFAULT 3
+);
+

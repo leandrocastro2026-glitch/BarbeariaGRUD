@@ -8,18 +8,14 @@ import { confirmacaoDeEmailAtiva } from "../email";
 import { prisma } from "../prisma";
 import { intervaloDoDia, paraInputData } from "../datas";
 import { ConflictError, NotFoundError, ValidationError } from "../erros";
-import { diaDaSemana, FUNCIONAMENTO } from "../horario-funcionamento";
+import { diaDaSemana, paraMinutos } from "../horario-funcionamento";
 import { completarCadastroSchema, escolhaHorarioSchema } from "../validacao";
 import * as agendamentos from "./agendamentos";
+import * as funcionamento from "./funcionamento";
 import { executar, validar } from "./_base";
 
 /** O cliente já tem o máximo de horários futuros permitido. */
 export class LimiteDeAgendamentos extends ConflictError {}
-
-const minutos = (hhmm: string) => {
-  const [h, m] = hhmm.split(":").map(Number);
-  return h * 60 + m;
-};
 
 /**
  * Liga a conta (perfil CLIENTE) a um cadastro de cliente. Se a barbearia já tinha um cliente com
@@ -60,10 +56,10 @@ export async function opcoes() {
 }
 
 /** Datas que o cliente pode escolher (hoje até `diasAFrente`), no formato AAAA-MM-DD. */
-export function limitesDeData(agora = new Date()) {
+export function limitesDeData(diasAFrente: number, agora = new Date()) {
   return {
     min: paraInputData(agora),
-    max: paraInputData(new Date(agora.getTime() + FUNCIONAMENTO.diasAFrente * 24 * 60 * 60_000)),
+    max: paraInputData(new Date(agora.getTime() + diasAFrente * 24 * 60 * 60_000)),
   };
 }
 
@@ -73,9 +69,11 @@ export function limitesDeData(agora = new Date()) {
  */
 export async function horariosLivres(entrada: unknown, agora = new Date()): Promise<Date[]> {
   const { barbeiroId, servicoId, data } = validar(escolhaHorarioSchema, entrada);
-  const { min, max } = limitesDeData(agora);
+  const f = await funcionamento.obter();
+  const { min, max } = limitesDeData(f.diasAFrente, agora);
   if (data < min || data > max) return [];
-  if (!(FUNCIONAMENTO.dias as readonly number[]).includes(diaDaSemana(data))) return [];
+  const dia = f.dias[diaDaSemana(data)];
+  if (!dia.aberto) return [];
 
   const [servico, barbeiro] = await Promise.all([
     prisma.servico.findUnique({ where: { id: servicoId } }),
@@ -83,16 +81,16 @@ export async function horariosLivres(entrada: unknown, agora = new Date()): Prom
   ]);
   if (!servico || !barbeiro?.ativo) return [];
 
-  const dia = intervaloDoDia(data)!;
+  const intervalo = intervaloDoDia(data)!;
   const ocupados = await prisma.agendamento.findMany({
-    where: { barbeiroId, status: { not: "CANCELADO" }, inicio: { lt: dia.ate }, fim: { gt: dia.de } },
+    where: { barbeiroId, status: { not: "CANCELADO" }, inicio: { lt: intervalo.ate }, fim: { gt: intervalo.de } },
     select: { inicio: true, fim: true },
   });
 
-  const cedo = agora.getTime() + FUNCIONAMENTO.antecedenciaMin * 60_000;
+  const cedo = agora.getTime() + f.antecedenciaMin * 60_000;
   const livres: Date[] = [];
-  for (let m = minutos(FUNCIONAMENTO.abre); m + servico.duracaoMin <= minutos(FUNCIONAMENTO.fecha); m += FUNCIONAMENTO.intervaloMin) {
-    const inicio = new Date(dia.de.getTime() + m * 60_000);
+  for (let m = paraMinutos(dia.abre); m + servico.duracaoMin <= paraMinutos(dia.fecha); m += f.intervaloMin) {
+    const inicio = new Date(intervalo.de.getTime() + m * 60_000);
     const fim = new Date(inicio.getTime() + servico.duracaoMin * 60_000);
     if (inicio.getTime() < cedo) continue;
     if (ocupados.some((o) => o.inicio < fim && o.fim > inicio)) continue;
@@ -114,7 +112,8 @@ export const agendar = (clienteId: number, entrada: unknown, agora = new Date())
     const futuros = await prisma.agendamento.count({
       where: { clienteId, status: "AGENDADO", inicio: { gt: agora } },
     });
-    if (futuros >= FUNCIONAMENTO.maxAgendamentosFuturos) {
+    const { maxAgendamentosFuturos } = await funcionamento.obter();
+    if (futuros >= maxAgendamentosFuturos) {
       throw new LimiteDeAgendamentos(
         `Você já tem ${futuros} horários marcados. Cancele um ou aguarde o atendimento para marcar outro.`,
       );

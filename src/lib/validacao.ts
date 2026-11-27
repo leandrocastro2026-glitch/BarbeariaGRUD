@@ -163,6 +163,31 @@ export const escolhaHorarioSchema = z.object({
   ),
 });
 
+// ---------- Horário de funcionamento (tela Horários, só admin) ----------
+
+const hora = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, { error: "Hora inválida (use HH:MM)." });
+const inteiro = (campo: string, min: number, max: number) =>
+  z.coerce
+    .number({ error: `Informe ${campo}.` })
+    .int({ error: `${campo} deve ser um número inteiro.` })
+    .min(min, { error: `${campo}: mínimo ${min}.` })
+    .max(max, { error: `${campo}: máximo ${max}.` });
+
+export const funcionamentoSchema = z.object({
+  dias: z
+    .array(
+      z
+        .object({ diaSemana: z.number().int().min(0).max(6), aberto: z.boolean(), abre: hora, fecha: hora })
+        .refine((d) => !d.aberto || d.abre < d.fecha, { error: "O horário de fechar precisa ser depois do de abrir." }),
+    )
+    .length(7)
+    .refine((dias) => dias.every((d, i) => d.diaSemana === i), { error: "Dias da semana inválidos." }),
+  intervaloMin: inteiro("O intervalo", 5, 240),
+  antecedenciaMin: inteiro("A antecedência", 0, 2880),
+  diasAFrente: inteiro("Os dias à frente", 1, 365),
+  maxAgendamentosFuturos: inteiro("O máximo por cliente", 1, 50),
+});
+
 export const loginSchema = z.object({
   email: z.string().trim().toLowerCase().min(1).max(200),
   senha: z.string().min(1).max(200),

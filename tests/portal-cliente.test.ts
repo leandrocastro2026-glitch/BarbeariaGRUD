@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/erros";
 import { prisma } from "@/lib/prisma";
+import { PADRAO, resumoFuncionamento } from "@/lib/horario-funcionamento";
+import * as funcionamento from "@/lib/services/funcionamento";
 import * as portal from "@/lib/services/portal-cliente";
 
 // 07/01/2030 é uma segunda-feira; "agora" fixo para os testes não dependerem do relógio.
@@ -17,6 +19,8 @@ let eu: { id: number };
 let outro: { id: number };
 
 beforeEach(async () => {
+  await prisma.horarioDia.deleteMany();
+  await prisma.configAgenda.deleteMany();
   await prisma.agendamento.deleteMany();
   await prisma.tokenVerificacao.deleteMany();
   await prisma.usuario.deleteMany();
@@ -75,6 +79,59 @@ describe("horários livres", () => {
 
   it("rejeita parâmetros malformados", async () => {
     await expect(portal.horariosLivres(escolha({ data: "amanhã" }), AGORA)).rejects.toBeInstanceOf(ValidationError);
+  });
+});
+
+describe("horário de funcionamento configurado pelo admin", () => {
+  const config = (mudar: (f: typeof PADRAO) => void) => {
+    const f = structuredClone(PADRAO);
+    mudar(f);
+    return funcionamento.salvar(f);
+  };
+
+  it("sem nada salvo, vale o padrão (seg a sáb, 9h às 19h)", async () => {
+    expect(await funcionamento.obter()).toEqual(PADRAO);
+    expect(resumoFuncionamento(PADRAO)).toBe("Seg a Sáb: 09:00–19:00");
+  });
+
+  it("usa o horário e o intervalo salvos para aquele dia", async () => {
+    await config((f) => {
+      f.dias[1] = { diaSemana: 1, aberto: true, abre: "13:00", fecha: "16:00" };
+      f.intervaloMin = 60;
+    });
+    expect(horas(await portal.horariosLivres(escolha(), AGORA))).toEqual(["13:00", "14:00", "15:00"]);
+  });
+
+  it("dia marcado como fechado não tem horários; domingo pode abrir", async () => {
+    await config((f) => {
+      f.dias[1].aberto = false;
+      f.dias[0] = { diaSemana: 0, aberto: true, abre: "10:00", fecha: "12:00" };
+    });
+    expect(await portal.horariosLivres(escolha(), AGORA)).toEqual([]);
+    const domingo = horas(await portal.horariosLivres(escolha({ data: "2030-01-13" }), AGORA));
+    expect(domingo).toEqual(["10:00", "10:30", "11:00", "11:30"]);
+  });
+
+  it("respeita o máximo de horários por cliente salvo", async () => {
+    await config((f) => (f.maxAgendamentosFuturos = 1));
+    await portal.agendar(eu.id, escolha({ inicio: hora("09:00").toISOString() }), AGORA);
+    await expect(portal.agendar(eu.id, escolha({ inicio: hora("10:00").toISOString() }), AGORA)).rejects.toBeInstanceOf(
+      portal.LimiteDeAgendamentos,
+    );
+  });
+
+  it("recusa configuração inválida (fecha antes de abrir, intervalo absurdo)", async () => {
+    await expect(config((f) => (f.dias[2] = { diaSemana: 2, aberto: true, abre: "18:00", fecha: "09:00" }))).rejects.toBeInstanceOf(
+      ValidationError,
+    );
+    await expect(config((f) => (f.intervaloMin = 1))).rejects.toBeInstanceOf(ValidationError);
+    expect(await funcionamento.obter()).toEqual(PADRAO);
+  });
+
+  it("resumo junta dias seguidos com o mesmo horário", () => {
+    const f = structuredClone(PADRAO);
+    f.dias[6] = { diaSemana: 6, aberto: true, abre: "09:00", fecha: "14:00" };
+    expect(resumoFuncionamento(f)).toBe("Seg a Sex: 09:00–19:00 · Sáb: 09:00–14:00");
   });
 });
 

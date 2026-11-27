@@ -6,7 +6,8 @@ import { Cabecalho, Cartao, Carregando, Vazio, estiloBotao, estiloInput, estiloR
 import { formatarDataLonga, formatarHora } from "@/lib/datas";
 import { formatarPreco } from "@/lib/dinheiro";
 import { ValidationError } from "@/lib/erros";
-import { FUNCIONAMENTO, NOMES_DIAS } from "@/lib/horario-funcionamento";
+import { resumoFuncionamento } from "@/lib/horario-funcionamento";
+import * as funcionamento from "@/lib/services/funcionamento";
 import * as portal from "@/lib/services/portal-cliente";
 import { exigirPaginaCliente } from "@/lib/sessao";
 
@@ -14,22 +15,16 @@ export const metadata: Metadata = { title: "Agendar" };
 
 const ERROS: Record<string, string> = {
   ocupado: "Esse horário acabou de ser ocupado. Escolha outro abaixo.",
-  limite: `Você já tem ${FUNCIONAMENTO.maxAgendamentosFuturos} horários marcados. Cancele um em "Meus horários" para marcar outro.`,
+  limite: 'Você já atingiu o máximo de horários marcados. Cancele um em "Meus horários" para marcar outro.',
   invalido: "Não foi possível marcar com esses dados. Escolha de novo.",
 };
 
 const texto = (v: string | string[] | undefined) => (typeof v === "string" ? v : "");
 
-function resumoFuncionamento() {
-  const dias = FUNCIONAMENTO.dias.map((d) => NOMES_DIAS[d]);
-  const faixa = dias.length > 2 ? `${dias[0]} a ${dias.at(-1)}` : dias.join(" e ");
-  return `Atendemos de ${faixa}, das ${FUNCIONAMENTO.abre} às ${FUNCIONAMENTO.fecha}.`;
-}
-
 export default function AgendarPage({ searchParams }: PageProps<"/agendar">) {
   return (
     <>
-      <Cabecalho titulo="Agendar horário" subtitulo={resumoFuncionamento()} />
+      <Cabecalho titulo="Agendar horário" />
       <Suspense fallback={<Carregando />}>
         <Conteudo searchParams={searchParams} />
       </Suspense>
@@ -43,11 +38,11 @@ async function Conteudo({ searchParams }: Pick<PageProps<"/agendar">, "searchPar
   const escolha = { servicoId: texto(busca.servicoId), barbeiroId: texto(busca.barbeiroId), data: texto(busca.data) };
   const erro = ERROS[texto(busca.erro)];
 
-  const { servicos, barbeiros } = await portal.opcoes();
+  const [{ servicos, barbeiros }, f] = await Promise.all([portal.opcoes(), funcionamento.obter()]);
   if (!servicos.length || !barbeiros.length) {
     return <Vazio>A agenda online ainda não está disponível. Fale com a barbearia para marcar.</Vazio>;
   }
-  const limites = portal.limitesDeData();
+  const limites = portal.limitesDeData(f.diasAFrente);
 
   let horarios: Date[] | null = null;
   if (escolha.servicoId && escolha.barbeiroId && escolha.data) {
@@ -60,6 +55,7 @@ async function Conteudo({ searchParams }: Pick<PageProps<"/agendar">, "searchPar
 
   return (
     <div className="space-y-6">
+      <p className="text-sm text-sub italic">Horário de atendimento: {resumoFuncionamento(f)}</p>
       {erro && (
         <p role="alert" className="border-l-4 border-verm bg-white px-4 py-3 text-sm text-verm">
           {erro}

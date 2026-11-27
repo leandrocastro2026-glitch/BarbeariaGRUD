@@ -11,6 +11,7 @@ const LINKS: (ItemNav & { recurso: Recurso })[] = [
   { href: "/servicos", rotulo: "Serviços", recurso: "servicos" },
   { href: "/dashboard", rotulo: "Dashboard", recurso: "dashboard" },
   { href: "/usuarios", rotulo: "Usuários", recurso: "usuarios" },
+  { href: "/horarios", rotulo: "Horários", recurso: "horarios" },
   // Área do cliente
   { href: "/agendar", rotulo: "Agendar", recurso: "portal" },
   { href: "/meus-agendamentos", rotulo: "Meus horários", recurso: "portal" },
