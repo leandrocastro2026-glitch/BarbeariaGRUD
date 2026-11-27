@@ -9,7 +9,7 @@
  */
 import { createHash, randomBytes } from "node:crypto";
 import { indiceEmail } from "../cripto";
-import { emailVerificacao, enviarEmail } from "../email";
+import { confirmacaoDeEmailAtiva, emailVerificacao, enviarEmail } from "../email";
 import { prisma } from "../prisma";
 import { gerarHashSenha } from "../senha";
 import { cadastroSchema } from "../validacao";
@@ -53,23 +53,29 @@ export async function enviarLinkVerificacao(usuarioId: number, urlBase: string) 
 }
 
 /**
- * Cria a conta e envia o link. Se o e-mail já estiver cadastrado, não diz isso a quem pediu
- * (evita descobrir quais e-mails existem): só reenvia o link se a conta ainda não foi confirmada.
+ * `confirmar`: a pessoa precisa clicar no link do e-mail antes de entrar (há provedor de e-mail).
+ * `jaExistia`: o e-mail já tinha conta. Só pode ser mostrado a quem pediu quando `confirmar` é
+ * false — com confirmação, a resposta é sempre a mesma para não revelar quem tem conta.
  */
+export type ResultadoCadastro = { confirmar: boolean; jaExistia: boolean };
+
+/** Cria a conta e, se a confirmação estiver ativa, envia o link. */
 export const cadastrar = (entrada: unknown, urlBase: string) =>
-  executar(async () => {
+  executar(async (): Promise<ResultadoCadastro> => {
     const { nome, email, senha } = validar(cadastroSchema, entrada);
+    const confirmar = confirmacaoDeEmailAtiva();
     const existente = await prisma.usuario.findUnique({ where: { emailHash: indiceEmail(email) } });
     if (existente) {
-      if (!existente.emailVerificadoEm) await enviarLinkVerificacao(existente.id, urlBase);
-      return;
+      if (confirmar && !existente.emailVerificadoEm) await enviarLinkVerificacao(existente.id, urlBase);
+      return { confirmar, jaExistia: true };
     }
     const senhaHash = await gerarHashSenha(senha);
     const novo = await prisma.usuario.create({
       data: { nome, email, senhaHash, ...(await perfilInicial()) },
       select: { id: true },
     });
-    await enviarLinkVerificacao(novo.id, urlBase);
+    if (confirmar) await enviarLinkVerificacao(novo.id, urlBase);
+    return { confirmar, jaExistia: false };
   });
 
 /** Confirma o e-mail a partir do token do link. Devolve false se o link for inválido ou vencido. */

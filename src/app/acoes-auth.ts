@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { AuthError, CredentialsSignin } from "next-auth";
 import { googleAtivo, signIn, signOut } from "@/auth";
 import { AppError, ConflictError, ValidationError } from "@/lib/erros";
+import { confirmacaoDeEmailAtiva } from "@/lib/email";
 import { criarLimiteLogin } from "@/lib/limite-login";
 import { cadastrar as cadastrarConta, confirmarEmail } from "@/lib/services/cadastro";
 import { urlPublica } from "@/lib/url-publica";
@@ -86,21 +87,33 @@ export async function cadastrar(_anterior: EstadoCadastro, form: FormData): Prom
     return { valores, erro: "Muitos cadastros feitos daqui. Aguarde um pouco e tente de novo." };
   }
 
+  const jaTemConta: EstadoCadastro = {
+    valores,
+    erro: "Este e-mail já tem conta. Entre com ele ou use outro e-mail.",
+    campos: { email: "Já existe uma conta com este e-mail." },
+  };
+
+  let resultado;
   try {
-    await cadastrarConta(entrada, await urlPublica());
+    resultado = await cadastrarConta(entrada, await urlPublica());
     limiteCadastro.registrarFalha(ip);
-    // Mesma resposta exista ou não o e-mail: não revela quem já tem conta.
-    return { ok: true, valores };
   } catch (e) {
     if (e instanceof ValidationError) {
       const campos = Object.fromEntries(Object.entries(e.campos ?? {}).map(([k, v]) => [k, v[0] ?? ""]));
       return { valores, erro: "Confira os campos destacados.", campos };
     }
-    // Dois cadastros simultâneos com o mesmo e-mail: responde igual ao caso normal.
-    if (e instanceof ConflictError) return { ok: true, valores };
+    // Dois cadastros simultâneos com o mesmo e-mail.
+    if (e instanceof ConflictError) return confirmacaoDeEmailAtiva() ? { ok: true, valores } : jaTemConta;
     console.error("[cadastro] falha ao cadastrar:", e instanceof AppError ? e.message : e);
     return { valores, erro: "Não foi possível concluir o cadastro agora. Tente novamente." };
   }
+
+  // Com confirmação por e-mail: mesma resposta exista ou não a conta (não revela quem tem conta).
+  if (resultado.confirmar) return { ok: true, valores };
+  if (resultado.jaExistia) return jaTemConta;
+  // Sem confirmação: a conta já vale, então entra direto (o redirect sai daqui como exceção).
+  await signIn("credentials", { email: entrada.email, senha: entrada.senha, redirectTo: "/" });
+  return {};
 }
 
 /**

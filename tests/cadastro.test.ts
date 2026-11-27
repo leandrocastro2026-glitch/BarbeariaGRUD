@@ -28,6 +28,8 @@ const tokenDoUltimoEmail = () => {
 const buscar = (email: string) => prisma.usuario.findUniqueOrThrow({ where: { emailHash: indiceEmail(email) } });
 
 beforeEach(async () => {
+  // Estes testes simulam um provedor de e-mail configurado (confirmação ativa); o envio é falso (mock).
+  vi.stubEnv("BREVO_API_KEY", "teste");
   await prisma.tokenVerificacao.deleteMany();
   await prisma.usuario.deleteMany();
   enviados.length = 0;
@@ -70,7 +72,8 @@ describe("cadastro por e-mail", () => {
 
   it("e-mail já cadastrado não cria outra conta nem dá erro (não revela quem existe)", async () => {
     await cadastro.cadastrar(dados("a@x.com"), BASE);
-    await expect(cadastro.cadastrar(dados("a@x.com", { nome: "Outro" }), BASE)).resolves.toBeUndefined();
+    // Com confirmação ativa, a tela mostra a mesma mensagem nos dois casos (confirmar: true).
+    await expect(cadastro.cadastrar(dados("a@x.com", { nome: "Outro" }), BASE)).resolves.toMatchObject({ confirmar: true });
     expect(await prisma.usuario.count()).toBe(1);
     expect((await buscar("a@x.com")).nome).toBe("Fulano");
     // Reenvio dentro de 1 minuto é ignorado (anti-spam).
@@ -91,6 +94,29 @@ describe("cadastro por e-mail", () => {
     await cadastro.cadastrar(dados("dono@x.com"), BASE);
     await cadastro.cadastrar(dados("hacker@x.com", { perfil: "ADMIN", ativo: true }), BASE);
     expect(await buscar("hacker@x.com")).toMatchObject({ perfil: "CLIENTE" });
+  });
+});
+
+describe("cadastro sem provedor de e-mail (site de demonstração)", () => {
+  beforeEach(() => vi.stubEnv("BREVO_API_KEY", ""));
+
+  it("cria a conta sem pedir confirmação e não envia e-mail", async () => {
+    await cadastro.cadastrar(dados("dono@x.com"), BASE);
+    expect(await cadastro.cadastrar(dados("novo@x.com"), BASE)).toEqual({ confirmar: false, jaExistia: false });
+    expect(enviados).toHaveLength(0);
+    expect(await buscar("novo@x.com")).toMatchObject({ perfil: "CLIENTE", ativo: true, emailVerificadoEm: null });
+  });
+
+  it("avisa que o e-mail já tem conta e não altera a conta existente", async () => {
+    await cadastro.cadastrar(dados("a@x.com"), BASE);
+    const antes = await buscar("a@x.com");
+    expect(await cadastro.cadastrar(dados("a@x.com", { nome: "Outro", senha: "outraSenha9", confirmacao: "outraSenha9" }), BASE)).toEqual({
+      confirmar: false,
+      jaExistia: true,
+    });
+    const depois = await buscar("a@x.com");
+    expect(depois.nome).toBe("Fulano");
+    expect(depois.senhaHash).toBe(antes.senhaHash);
   });
 });
 

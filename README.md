@@ -160,6 +160,7 @@ O repositório já tem tudo pronto. O `railway.json` define o build e o start, e
 
 ## Cadastro, confirmação de e-mail e Google
 
+- **Com ou sem confirmação:** sem provedor de e-mail configurado (`RESEND_API_KEY`/`BREVO_API_KEY`), o cadastro **não pede confirmação**: a pessoa cria a conta e já entra (bom para site de demonstração). Nesse modo, a conta **não herda** o histórico de um cliente que a barbearia já tinha com o mesmo e-mail, já que ninguém provou ser dono dele. Ao configurar um provedor, a confirmação passa a ser exigida automaticamente.
 - **Criar conta** (`/cadastro`): nome, e-mail e senha. O servidor manda um link de confirmação (vale 24 h, uso único, só o hash fica no banco). Sem confirmar, o login mostra "Falta confirmar seu e-mail" e reenvia o link (no máximo 1 por minuto).
 - **Quem ganha acesso:** a **primeira** conta do sistema vira **administrador**. As seguintes são de **clientes**: entram assim que confirmam o e-mail, mas só veem a área do cliente. Contas da equipe (Recepção/Admin) continuam sendo criadas por um admin em **Usuários → Novo**.
 - **E-mail:** o Railway bloqueia SMTP no plano Hobby, então o envio é por API HTTPS. Com **Resend**, só dá para enviar a qualquer pessoa depois de verificar um domínio seu; sem domínio, ele só envia para o e-mail da própria conta Resend. O **Brevo** permite verificar só um endereço remetente. Sem chave configurada, o link aparece no log do servidor (`[email] nenhum provedor configurado`).

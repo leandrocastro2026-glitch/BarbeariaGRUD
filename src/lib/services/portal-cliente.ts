@@ -4,6 +4,7 @@
  * então um cliente não consegue agir em nome de outro.
  */
 import { indiceEmail } from "../cripto";
+import { confirmacaoDeEmailAtiva } from "../email";
 import { prisma } from "../prisma";
 import { intervaloDoDia, paraInputData } from "../datas";
 import { ConflictError, NotFoundError, ValidationError } from "../erros";
@@ -28,15 +29,22 @@ export const completarCadastro = (usuarioId: number, entrada: unknown) =>
   executar(async () => {
     const { nome, telefone } = validar(completarCadastroSchema, entrada);
     const u = await prisma.usuario.findUniqueOrThrow({ where: { id: usuarioId } });
-    if (u.perfil !== "CLIENTE" || !u.emailVerificadoEm) throw new ValidationError("Conta não pode ter cadastro de cliente.");
+    const verificado = !!u.emailVerificadoEm;
+    if (u.perfil !== "CLIENTE" || (!verificado && confirmacaoDeEmailAtiva())) {
+      throw new ValidationError("Conta não pode ter cadastro de cliente.");
+    }
     if (u.clienteId) return u.clienteId;
 
     return prisma.$transaction(async (tx) => {
-      const existente = await tx.cliente.findUnique({ where: { emailHash: indiceEmail(u.email) }, include: { usuario: true } });
+      // Sem e-mail confirmado (modo sem confirmação), qualquer um poderia digitar o e-mail de outra
+      // pessoa: então NÃO reaproveita o cliente existente nem grava o e-mail no cadastro novo.
+      const existente = verificado
+        ? await tx.cliente.findUnique({ where: { emailHash: indiceEmail(u.email) }, include: { usuario: true } })
+        : null;
       const cliente =
         existente && !existente.usuario
           ? await tx.cliente.update({ where: { id: existente.id }, data: { telefone } })
-          : await tx.cliente.create({ data: { nome, telefone, email: existente ? null : u.email } });
+          : await tx.cliente.create({ data: { nome, telefone, email: existente || !verificado ? null : u.email } });
       await tx.usuario.update({ where: { id: usuarioId }, data: { clienteId: cliente.id, nome } });
       return cliente.id;
     });

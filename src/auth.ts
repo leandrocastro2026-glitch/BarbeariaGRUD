@@ -2,6 +2,7 @@ import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { indiceEmail } from "@/lib/cripto";
+import { confirmacaoDeEmailAtiva } from "@/lib/email";
 import { limiteLogin } from "@/lib/limite-login";
 import { PERFIS, type Perfil } from "@/lib/permissoes";
 import { prisma } from "@/lib/prisma";
@@ -57,7 +58,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         limiteLogin.registrarSucesso(email);
 
         // Só depois de a senha conferir dizemos por que a conta ainda não entra.
-        if (!usuario.emailVerificadoEm) {
+        if (!usuario.emailVerificadoEm && confirmacaoDeEmailAtiva()) {
           try {
             await enviarLinkVerificacao(usuario.id, await urlPublica());
           } catch (e) {

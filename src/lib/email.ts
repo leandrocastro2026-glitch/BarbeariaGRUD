@@ -11,6 +11,15 @@ import { mascararEmail } from "./cripto";
 
 export type Email = { para: string; assunto: string; texto: string; html: string };
 
+/**
+ * A confirmação de e-mail no cadastro só é exigida quando há um provedor para enviar o link.
+ * Sem provedor (ex.: site de demonstração) a conta é criada e já pode entrar — o e-mail fica
+ * "não verificado", e por isso a conta não herda o histórico de um cliente com o mesmo e-mail.
+ */
+export function confirmacaoDeEmailAtiva() {
+  return !!(process.env.RESEND_API_KEY || process.env.BREVO_API_KEY);
+}
+
 function separarRemetente(remetente: string) {
   const m = remetente.match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
   return m ? { name: m[1] || undefined, email: m[2] } : { email: remetente.trim() };

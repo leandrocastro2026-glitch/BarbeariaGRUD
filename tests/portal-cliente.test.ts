@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/erros";
 import { prisma } from "@/lib/prisma";
 import * as portal from "@/lib/services/portal-cliente";
@@ -136,6 +136,18 @@ describe("meus agendamentos e cancelamento", () => {
 });
 
 describe("completar cadastro", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("sem confirmação de e-mail: cria cadastro novo e NÃO herda o cliente que tinha esse e-mail", async () => {
+    vi.stubEnv("BREVO_API_KEY", "");
+    await prisma.cliente.update({ where: { id: eu.id }, data: { email: "eu@x.com" } });
+    const intruso = await prisma.usuario.create({ data: { nome: "Intruso", email: "eu@x.com", perfil: "CLIENTE" } });
+    const clienteId = await portal.completarCadastro(intruso.id, { nome: "Intruso", telefone: "11988887777" });
+    expect(clienteId).not.toBe(eu.id);
+    expect((await prisma.cliente.findUniqueOrThrow({ where: { id: clienteId } })).email).toBeNull();
+    expect(await portal.meusAgendamentos(clienteId)).toEqual([]);
+  });
+
   const conta = (email: string, extra: object = {}) =>
     prisma.usuario.create({
       data: { nome: "Novo", email, perfil: "CLIENTE", emailVerificadoEm: new Date(), ...extra },
@@ -159,7 +171,8 @@ describe("completar cadastro", () => {
     expect(await portal.completarCadastro(u.id, { nome: "Eu", telefone: "11955550000" })).toBe(eu.id);
   });
 
-  it("recusa telefone inválido, conta sem e-mail confirmado e conta da equipe", async () => {
+  it("recusa telefone inválido, conta sem e-mail confirmado (com confirmação ativa) e conta da equipe", async () => {
+    vi.stubEnv("BREVO_API_KEY", "teste");
     const u = await conta("a@x.com");
     await expect(portal.completarCadastro(u.id, { nome: "A", telefone: "abc" })).rejects.toBeInstanceOf(ValidationError);
     const naoVerificada = await conta("b@x.com", { emailVerificadoEm: null });
